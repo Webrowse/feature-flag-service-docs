@@ -1,0 +1,59 @@
+---
+title: Targeting Rules
+sidebar_position: 4
+description: Targeting rules enable a flag for specific users before rollout percentage applies. Match by user ID, email, or email domain.
+---
+
+# Targeting Rules
+
+Targeting rules let you enable a flag for specific users without affecting everyone else. They run before the rollout percentage, so a matching user always gets `enabled: true` even if the rollout is set to 0%.
+
+## Rule types
+
+| `rule_type` | `rule_value` example | Matches when |
+|---|---|---|
+| `user_id` | `"user_12345"` | `context.user_id` equals the value exactly |
+| `user_email` | `"alice@example.com"` | `context.user_email` equals the value exactly |
+| `email_domain` | `"@company.com"` | `context.user_email` ends with this string |
+
+## Priority
+
+Each rule has a `priority`, a positive integer. Rules are evaluated in descending order (highest first). The first matching rule ends evaluation with `enabled: true`.
+
+```
+Rule priority 20 — user_id = "user_vip_1"   → checked first
+Rule priority 10 — email_domain = "@beta.io" → checked second
+Rule priority 5  — user_email = "qa@test.com" → checked third
+```
+
+If no rule matches, evaluation falls through to the rollout percentage.
+
+## Creating a rule
+
+```bash
+POST /api/projects/{pid}/environments/{eid}/flags/{fid}/rules
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "rule_type": "email_domain",
+  "rule_value": "@yourcompany.com",
+  "priority": 10
+}
+```
+
+## Practical patterns
+
+**Internal team access:** add an `email_domain` rule for your company domain. All employees get the flag immediately, regardless of rollout.
+
+**VIP early access:** add `user_email` rules for specific accounts. Add or remove them without touching code or redeploying.
+
+**QA override:** add a `user_id` rule for your QA bot user. It always gets the flag enabled, even in production at 0% rollout, so automated tests always hit the new path.
+
+## Rules and rollout
+
+Rules and rollout are independent. A user who does not match any rule falls through to the rollout percentage. A user who matches a rule gets `true` immediately and is not subject to the rollout percentage.
+
+## Disabled rules
+
+A rule can be marked inactive without deleting it. Inactive rules are skipped during evaluation. Useful for temporarily suspending a targeting override without losing the configuration.

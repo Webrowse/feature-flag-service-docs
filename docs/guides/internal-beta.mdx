@@ -1,0 +1,79 @@
+---
+title: Internal Beta
+sidebar_position: 3
+description: Enable a feature for your entire team using email domain targeting before rolling it out to users.
+---
+
+# Internal Beta
+
+An internal beta lets your team test a feature in production with real data and real infrastructure before any external user sees it. Use an `email_domain` targeting rule to match everyone on your company domain.
+
+## Setup
+
+Create the flag with 0% rollout (users won't see it), then add a rule for your company domain:
+
+**1. Create the flag**
+
+```bash
+curl -X POST .../flags \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Redesigned Dashboard",
+    "key": "redesigned_dashboard",
+    "enabled": true,
+    "rollout_percentage": 0
+  }'
+```
+
+**2. Add the email domain rule**
+
+```bash
+curl -X POST .../flags/$FLAG_ID/rules \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "rule_type": "email_domain",
+    "rule_value": "@yourcompany.com",
+    "priority": 10
+  }'
+```
+
+Everyone who logs in with a `@yourcompany.com` email now sees the new dashboard. No one else does.
+
+## Testing in production
+
+This pattern tests the full production stack — real database, real third-party integrations, real network conditions — without exposing users to an unfinished feature.
+
+Your evaluate call must pass `user_email` from the authenticated session for domain matching to work:
+
+```typescript
+const flags = await evaluate({
+  userId: user.id,
+  userEmail: user.email,  // required for email_domain matching
+});
+```
+
+## Expanding the beta
+
+Once your team is happy, expand to a small external cohort before full rollout:
+
+1. Add specific `user_email` rules for trusted external users (priority 9)
+2. Increase `rollout_percentage` to 5% for the broader public
+3. Remove the domain rule when you go to full rollout
+
+## Removing the rule
+
+When ready for general availability, delete the targeting rule and set rollout to 100:
+
+```bash
+# Delete the domain rule
+curl -X DELETE .../flags/$FLAG_ID/rules/$RULE_ID \
+  -H "Authorization: Bearer $TOKEN"
+
+# Open to all users
+curl -X PUT .../flags/$FLAG_ID \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "rollout_percentage": 100 }'
+```

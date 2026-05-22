@@ -1,0 +1,106 @@
+---
+title: cURL / HTTP
+sidebar_position: 3
+description: Evaluate feature flags with raw HTTP. Works from any language or environment.
+---
+
+# cURL / HTTP
+
+The evaluate endpoint is plain HTTP. These examples show the raw request shape. Adapt them to any language.
+
+## Basic evaluation
+
+```bash
+curl -X POST https://api.ffs.adarshrust.com/sdk/v1/evaluate \
+  -H "X-SDK-Key: sdk_your_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "environment": "production",
+    "context": {
+      "user_id": "user_42",
+      "user_email": "alice@example.com"
+    }
+  }'
+```
+
+## Without email (ID-only)
+
+Useful if your application doesn't have user emails, or if you use `user_id` targeting rules only:
+
+```bash
+curl -X POST https://api.ffs.adarshrust.com/sdk/v1/evaluate \
+  -H "X-SDK-Key: sdk_your_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "environment": "production",
+    "context": { "user_id": "user_42" }
+  }'
+```
+
+## Against a local instance
+
+When running the service locally via Docker:
+
+```bash
+curl -X POST http://localhost:8080/sdk/v1/evaluate \
+  -H "X-SDK-Key: sdk_your_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "environment": "production",
+    "context": { "user_id": "test_user" }
+  }'
+```
+
+## Staging environment
+
+```bash
+curl -X POST https://api.ffs.adarshrust.com/sdk/v1/evaluate \
+  -H "X-SDK-Key: sdk_your_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "environment": "staging",
+    "context": { "user_id": "user_42" }
+  }'
+```
+
+## Error responses
+
+| Status | Meaning |
+|---|---|
+| `200 OK` | Successful evaluation |
+| `400 Bad Request` | Missing or malformed request body |
+| `401 Unauthorized` | Missing or invalid SDK key |
+| `429 Too Many Requests` | Rate limit exceeded |
+| `500 Internal Server Error` | Service error |
+
+On any non-200 response, default all flags to `false` in your application and log the error for investigation.
+
+## Python example
+
+```python
+import os
+import requests
+
+def evaluate_flags(user_id: str, user_email: str | None = None) -> dict:
+    try:
+        resp = requests.post(
+            f"{os.environ['FFS_API_URL']}/sdk/v1/evaluate",
+            headers={
+                "X-SDK-Key": os.environ["FFS_SDK_KEY"],
+                "Content-Type": "application/json",
+            },
+            json={
+                "environment": os.environ.get("FFS_ENVIRONMENT", "production"),
+                "context": {"user_id": user_id, "user_email": user_email},
+            },
+            timeout=2,
+        )
+        resp.raise_for_status()
+        return resp.json().get("flags", {})
+    except Exception:
+        return {}
+
+flags = evaluate_flags("user_42", "alice@example.com")
+if flags.get("dark_mode", {}).get("enabled"):
+    print("dark mode is on")
+```

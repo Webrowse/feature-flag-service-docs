@@ -1,0 +1,110 @@
+---
+title: Projects
+sidebar_position: 2
+description: REST API reference for creating and managing projects.
+---
+
+# Projects API
+
+All endpoints require `Authorization: Bearer <token>`.
+
+## Create a project
+
+`POST /api/projects`
+
+**Request**
+
+```json
+{
+  "name": "My App",
+  "description": "Optional description"
+}
+```
+
+| Field | Required |
+|---|---|
+| `name` | Yes |
+| `description` | No |
+
+**Response** `201 Created`
+
+```json
+{
+  "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+  "name": "My App",
+  "description": "Optional description",
+  "sdk_key": "sdk_a1b2c3d4...",
+  "created_at": "2026-05-22T10:00:00Z",
+  "updated_at": "2026-05-22T10:00:00Z"
+}
+```
+
+Creating a project automatically creates `production` and `staging` environments.
+
+---
+
+## List projects
+
+`GET /api/projects`
+
+**Response** `200 OK` — array of project objects.
+
+---
+
+## Get a project
+
+`GET /api/projects/{project_id}`
+
+**Response** `200 OK` — single project object above.
+
+---
+
+## Update a project
+
+`PUT /api/projects/{project_id}`
+
+**Request** — all fields optional, only provided fields are updated.
+
+```json
+{
+  "name": "My App v2",
+  "description": "Updated description"
+}
+```
+
+**Response** `200 OK` — updated project object.
+
+---
+
+## Rotate SDK key
+
+`POST /api/projects/{project_id}/regenerate-key`
+
+Invalidates the current SDK key and issues a new one. Returns the full project object with the new `sdk_key`.
+
+**Response** `200 OK`
+
+```json
+{
+  "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+  "name": "My App",
+  "description": null,
+  "sdk_key": "sdk_z9y8x7w6...",
+  "created_at": "2026-05-22T10:00:00Z",
+  "updated_at": "2026-05-22T11:00:00Z"
+}
+```
+
+Applications using the old key will immediately receive `401 Unauthorized` on evaluate calls.
+
+---
+
+## Delete a project
+
+`DELETE /api/projects/{project_id}`
+
+**Response** `204 No Content`
+
+:::warning
+Permanently deletes all environments, flags, rules, and evaluation history for this project.
+:::

@@ -1,0 +1,94 @@
+---
+title: Evaluate Flags in Your App
+sidebar_position: 3
+description: How to call the SDK endpoint from your application and use the flag results.
+---
+
+# Evaluate Flags in Your App
+
+Flag evaluation happens at runtime in your application. You call one endpoint, get back the state of every flag for a given user, and branch your code on the result.
+
+## The evaluate endpoint
+
+```
+POST /sdk/v1/evaluate
+X-SDK-Key: sdk_your_key_here
+```
+
+Send it a user context. Get back all flags for that user in one round-trip.
+
+```json title="Request"
+{
+  "environment": "production",
+  "context": {
+    "user_id": "user_42",
+    "user_email": "alice@example.com"
+  }
+}
+```
+
+```json title="Response"
+{
+  "flags": {
+    "dark_mode":        { "enabled": true,  "reason": "User in 50% rollout" },
+    "new_checkout":     { "enabled": true,  "reason": "Matched email_domain rule" },
+    "premium_features": { "enabled": false, "reason": "Flag is globally disabled" }
+  }
+}
+```
+
+## The user context
+
+| Field | Required | Description |
+|---|---|---|
+| `user_id` | Recommended | Stable identifier for this user. Used for percentage rollout bucketing. |
+| `user_email` | Optional | Email address. Required if you use `user_email` or `email_domain` targeting rules. |
+
+:::tip
+If no `user_id` is provided, the service falls back to `user_email` for rollout bucketing. If neither is provided, every call may produce a different result.
+:::
+
+## Reading the result
+
+Check `flags.<key>.enabled`. The `reason` field is for debugging only. Don't branch on it.
+
+```typescript
+const flags = await evaluateFlags(userId, userEmail);
+
+if (flags['dark_mode']?.enabled) {
+  // show dark mode
+}
+```
+
+## When to call evaluate
+
+Call it once per request (or once on page load) and pass the results down through your application. Calling evaluate on every individual flag check adds unnecessary latency. Cache it for the duration of the request.
+
+```typescript
+// call once, read many times
+const flags = await evaluateFlags(user.id, user.email);
+renderPage(flags);
+
+// N separate network calls per page
+if (await checkFlag('dark_mode', user.id)) { ... }
+if (await checkFlag('new_checkout', user.id)) { ... }
+```
+
+## Error handling
+
+If the SDK key is invalid or the service is unreachable, fail safely. Default to `false` for all flags and let your application run in its baseline state.
+
+```typescript
+async function evaluateFlags(userId: string, email: string) {
+  try {
+    const res = await fetch('/sdk/v1/evaluate', { ... });
+    if (!res.ok) return {};
+    const data = await res.json();
+    return data.flags;
+  } catch {
+    return {};
+  }
+}
+```
+
+For a complete integration example see [SDK Integration](/docs/sdk/overview).

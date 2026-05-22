@@ -1,0 +1,88 @@
+---
+title: SDK — Evaluate
+sidebar_position: 6
+description: Evaluate all feature flags for a user in a single API call using the SDK key.
+---
+
+# SDK — Evaluate Flags
+
+`POST /sdk/v1/evaluate`
+
+Evaluates every flag in the specified environment for the given user context. This is the only endpoint your application calls at runtime.
+
+**Authentication:** `X-SDK-Key: sdk_your_key_here` (not a JWT)
+
+## Request
+
+```json
+{
+  "environment": "production",
+  "context": {
+    "user_id": "user_42",
+    "user_email": "alice@example.com",
+    "custom_attributes": {}
+  }
+}
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `environment` | string | Yes | Environment key: `production`, `staging`, or a custom key |
+| `context.user_id` | string | No | Stable user identifier used for rollout bucketing. Recommended. |
+| `context.user_email` | string | No | Required for `user_email` and `email_domain` targeting rules |
+| `context.custom_attributes` | object | No | Reserved for future use |
+
+## Response `200 OK`
+
+```json
+{
+  "flags": {
+    "dark_mode": {
+      "enabled": true,
+      "reason": "User in 50% rollout"
+    },
+    "new_checkout": {
+      "enabled": true,
+      "reason": "Matched email_domain targeting rule"
+    },
+    "premium_features": {
+      "enabled": false,
+      "reason": "Flag is globally disabled"
+    }
+  }
+}
+```
+
+Every flag in the environment appears in the response.
+
+## Reason values
+
+| Reason | When |
+|---|---|
+| `"Flag is globally disabled"` | `enabled = false` |
+| `"Matched user_id targeting rule"` | matched a `user_id` rule |
+| `"Matched user_email targeting rule"` | matched a `user_email` rule |
+| `"Matched email_domain targeting rule"` | matched an `email_domain` rule |
+| `"User in N% rollout"` | bucket fell within rollout percentage |
+| `"User not in N% rollout"` | bucket fell outside rollout percentage |
+| `"Flag enabled globally"` | enabled=true, no rollout set (or rollout=0) |
+
+The `reason` field is for debugging only. Branch on `enabled`, not `reason`.
+
+## Errors
+
+| Status | Meaning |
+|---|---|
+| `400 Bad Request` | Missing or malformed request body |
+| `401 Unauthorized` | Missing or invalid SDK key |
+| `404 Not Found` | Environment key not found in this project |
+| `429 Too Many Requests` | Rate limit exceeded |
+| `500 Internal Server Error` | Service error |
+
+On any non-200 response, treat all flags as `false` in your application.
+
+## Notes
+
+- Evaluation logs are written asynchronously after the response is sent.
+- The endpoint is rate-limited at 200 requests per minute per IP.
+- Latency is typically under 10ms (two database queries + in-memory evaluation).

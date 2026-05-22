@@ -1,0 +1,72 @@
+---
+title: SDK Overview
+sidebar_position: 1
+description: Evaluate feature flags from any application using the SDK endpoint. One HTTP call returns all flags for a user.
+---
+
+# SDK Integration
+
+The SDK API is a single HTTP endpoint. No library required. Authenticate with an SDK key, send a user context, and receive all flag states in one response.
+
+## Endpoint
+
+```
+POST /sdk/v1/evaluate
+Host: api.ffs.adarshrust.com
+X-SDK-Key: sdk_your_project_key
+Content-Type: application/json
+```
+
+## Request
+
+```json
+{
+  "environment": "production",
+  "context": {
+    "user_id": "user_42",
+    "user_email": "alice@example.com"
+  }
+}
+```
+
+| Field | Required | Description |
+|---|---|---|
+| `environment` | Yes | Environment key: `production`, `staging`, or a custom key |
+| `context.user_id` | Recommended | Stable user identifier for rollout bucketing |
+| `context.user_email` | Optional | User email for `user_email` and `email_domain` targeting rules |
+
+## Response
+
+```json
+{
+  "flags": {
+    "dark_mode": {
+      "enabled": true,
+      "reason": "User in 50% rollout"
+    },
+    "new_checkout": {
+      "enabled": true,
+      "reason": "Matched email_domain targeting rule"
+    },
+    "premium_features": {
+      "enabled": false,
+      "reason": "Flag is globally disabled"
+    }
+  }
+}
+```
+
+Every flag in the environment is returned, even flags the user doesn't have access to (they appear as `enabled: false`). This lets you write your flag checks without worrying about missing keys.
+
+## Authentication
+
+The SDK key goes in the `X-SDK-Key` header. Find your SDK key on the project page in the dashboard. If the key is missing or invalid, the endpoint returns `401 Unauthorized`.
+
+## Rate limiting
+
+The SDK endpoint is rate-limited per IP. Call evaluate once per request and cache the result. Don't call it on every individual flag check.
+
+## Integration guides
+
+- [JavaScript / TypeScript](/docs/sdk/javascript)
+- [cURL / Manual HTTP](/docs/sdk/curl)

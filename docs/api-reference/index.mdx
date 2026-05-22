@@ -1,0 +1,67 @@
+---
+title: API Reference
+sidebar_position: 0
+description: Complete REST API reference for the Feature Flag Service management API and SDK API.
+---
+
+# API Reference
+
+The Feature Flag Service exposes two API surfaces:
+
+## Management API (`/api/*`)
+
+Used by the dashboard and by developers who want to automate flag management. Authenticated with a JWT token obtained from the auth endpoints.
+
+**Base URL:** `https://api.ffs.adarshrust.com`
+
+| Section | Description |
+|---|---|
+| [Authentication](/docs/api-reference/authentication) | Register, login, get a JWT |
+| [Projects](/docs/api-reference/projects) | Create and manage projects |
+| [Environments](/docs/api-reference/environments) | Create and manage environments |
+| [Feature Flags](/docs/api-reference/flags) | Create, update, toggle flags |
+| [Targeting Rules](/docs/api-reference/rules) | Add and manage targeting rules |
+
+## SDK API (`/sdk/*`)
+
+Used by your application at runtime to evaluate flags. Authenticated with an SDK key (`X-SDK-Key` header).
+
+| Section | Description |
+|---|---|
+| [Evaluate](/docs/api-reference/sdk-evaluate) | Evaluate all flags for a user |
+
+## Common conventions
+
+**Authentication header (management):**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Authentication header (SDK):**
+```
+X-SDK-Key: sdk_your_key_here
+```
+
+**Content type:** All request bodies are JSON. All responses are JSON.
+
+**Error format:** plain text string body. Not JSON.
+
+```
+Invalid input
+```
+
+**Timestamps:** All timestamps are ISO 8601 in UTC: `"2026-05-22T10:00:00Z"`
+
+**IDs:** All resource IDs are opaque strings. Do not parse or construct them.
+
+## Health check
+
+```
+GET /health
+```
+
+Returns `200 OK` with a database ping result. No authentication required. Use this for uptime monitoring.
+
+```json
+{ "status": "ok", "db": "ok" }
+```

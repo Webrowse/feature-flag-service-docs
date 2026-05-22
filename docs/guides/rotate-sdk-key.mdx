@@ -1,0 +1,50 @@
+---
+title: Rotate Your SDK Key
+sidebar_position: 6
+description: How and when to rotate an SDK key, and how to do it with zero downtime.
+---
+
+# Rotate Your SDK Key
+
+Each project has one SDK key. If it's exposed (committed to a public repo, logged in plaintext, or included in a client-side bundle), rotate it immediately.
+
+## When to rotate
+
+- SDK key was committed to a public repository
+- A team member with access leaves the organization
+- You suspect the key was captured from network logs
+- Routine key rotation policy
+
+## How to rotate
+
+```bash
+curl -X POST https://api.ffs.adarshrust.com/api/projects/$PROJECT_ID/regenerate-key \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+```json
+{
+  "sdk_key": "sdk_newkeyxxxxxxxxxxxxxxxxxxx"
+}
+```
+
+The old key is **invalidated immediately**. Any application still using the old key will receive a `401 Unauthorized` from the SDK endpoint.
+
+## Zero-downtime rotation
+
+To rotate without dropping requests:
+
+1. Rotate the key via API. Get the new key in the response.
+2. Update your application's environment variable to the new key (`SDK_KEY=sdk_new...`)
+3. Deploy / restart your application
+4. Verify evaluate calls are succeeding with the new key
+
+The window where the old key is dead and the new key isn't deployed yet is typically the duration of your deploy. For most setups this is under 2 minutes.
+
+If your deploy takes longer, consider blue-green or canary deployments: start the new instances with the new key before terminating the old instances.
+
+## Preventing exposure
+
+- Store the SDK key in an environment variable, never in source code
+- Do not log request headers. The `X-SDK-Key` header contains the key.
+- The key is safe in server-side code. Do not include it in client-side JavaScript bundles served to browsers. Proxy the evaluate call through your backend instead.

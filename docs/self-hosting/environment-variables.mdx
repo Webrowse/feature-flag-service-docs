@@ -1,0 +1,51 @@
+---
+title: Environment Variables
+sidebar_position: 2
+description: All environment variables for configuring the Feature Flag Service backend.
+---
+
+# Environment Variables
+
+## Backend
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `DATABASE_URL` | Yes | — | PostgreSQL connection string. Format: `postgres://user:password@host:port/dbname` |
+| `JWT_SECRET` | Yes | — | Secret key used to sign and verify JWT tokens. Minimum 32 characters. |
+| `PORT` | Yes | — | Port the HTTP server listens on. |
+| `HOST` | No | `0.0.0.0` | Bind address. Use `0.0.0.0` to accept connections from any interface. |
+| `ALLOWED_ORIGIN` | No | `http://localhost:3000` | CORS allowed origin for the management API. Comma-separated for multiple origins. Use `*` to allow all (not recommended in production). |
+| `RUST_LOG` | No | `info` | Log level. Options: `error`, `warn`, `info`, `debug`, `trace`. |
+
+## Frontend
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `VITE_API_URL` | Yes | `http://localhost:8080` | Base URL of the backend API. Set as a build-time argument. Vite inlines this into the bundle at compile time, not runtime. |
+
+:::warning VITE_API_URL is a build argument
+`VITE_API_URL` must be set before the frontend Docker image is built, not at runtime. If you change the API URL, rebuild the image.
+
+```bash
+docker build --build-arg VITE_API_URL=https://api.yourhost.com -t frontend .
+```
+:::
+
+## Generating a JWT secret
+
+```bash
+openssl rand -base64 48
+```
+
+Use the output as your `JWT_SECRET`. Keep it out of source control. Store it in a secrets manager or your platform's environment variable UI.
+
+## Example `.env`
+
+```bash title=".env"
+DATABASE_URL=postgres://postgres:yourpassword@localhost:5432/featureflags
+JWT_SECRET=Sx7kQpZ3mNvRtY9wXjLbCdFhGaEiKuOp...
+PORT=8080
+HOST=0.0.0.0
+ALLOWED_ORIGIN=https://ffs.yourhost.com
+RUST_LOG=info
+```

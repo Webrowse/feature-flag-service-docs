@@ -1,0 +1,51 @@
+---
+title: Welcome
+sidebar_position: 1
+description: Feature Flag Service documentation. Manage feature flags, target users, and control rollouts without touching your deployment pipeline.
+---
+
+# Feature Flag Service
+
+A self-hosted feature flag service built with Rust and PostgreSQL. Create flags, target specific users, run gradual rollouts, and evaluate everything from your application through a single SDK endpoint.
+
+## What it does
+
+- **Toggle features** across projects and environments without redeploying
+- **Target users** by ID, email address, or email domain
+- **Roll out gradually** with deterministic percentage-based bucketing
+- **Kill switches** — disable any flag instantly, no deploy needed
+- **Evaluate flags** from any application with a single HTTP call
+
+## How it works
+
+Your application calls `POST /sdk/v1/evaluate` with an SDK key and a user context. The service returns every flag state for that user in one JSON response.
+
+```bash
+POST /sdk/v1/evaluate
+X-SDK-Key: sdk_your_key_here
+
+{
+  "environment": "production",
+  "context": { "user_id": "user_42", "user_email": "alice@example.com" }
+}
+```
+
+```json
+{
+  "flags": {
+    "dark_mode":       { "enabled": true,  "reason": "User in 50% rollout" },
+    "new_checkout":    { "enabled": true,  "reason": "Matched email_domain rule" },
+    "premium_features":{ "enabled": false, "reason": "Flag is globally disabled" }
+  }
+}
+```
+
+## Where to start
+
+| I want to… | Go to |
+|---|---|
+| Get something working fast | [Quickstart](/docs/getting-started/quickstart) |
+| Understand the data model | [Concepts](/docs/concepts) |
+| Integrate flags into my app | [SDK Integration](/docs/sdk/overview) |
+| See all API endpoints | [API Reference](/docs/api-reference) |
+| Deploy on my own server | [Self-Hosting](/docs/self-hosting) |

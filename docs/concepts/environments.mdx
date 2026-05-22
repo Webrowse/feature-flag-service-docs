@@ -1,0 +1,65 @@
+---
+title: Environments
+sidebar_position: 2
+description: Environments scope feature flags. The same flag key can be on in staging and off in production.
+---
+
+# Environments
+
+Environments let you run the same set of flag keys with different configurations across production, staging, and any other context you need.
+
+## How environments work
+
+A flag in production and a flag in staging are separate objects that happen to share the same key. Enabling one has no effect on the other. Their rollout percentages, targeting rules, and enabled state are all independent.
+
+```
+Project: "my-app"
+├── Environment: production
+│   └── Flag "dark_mode" — enabled: true, rollout: 20%
+└── Environment: staging
+    └── Flag "dark_mode" — enabled: true, rollout: 100%
+```
+
+Your application specifies the environment name in the evaluate request body:
+
+```json
+{
+  "environment": "production",
+  "context": { "user_id": "user_42" }
+}
+```
+
+## Default environments
+
+Every project starts with two environments:
+
+| Key | Name | Purpose |
+|---|---|---|
+| `production` | Production | Live user traffic |
+| `staging` | Staging | Pre-release testing |
+
+## Custom environments
+
+You can add as many environments as you need: `canary`, `qa`, `load-test`, `dev`, etc.
+
+```bash
+POST /api/projects/{project_id}/environments
+Authorization: Bearer <token>
+
+{
+  "name": "Canary",
+  "key": "canary"
+}
+```
+
+**Key format:** lowercase letters, numbers, `_`, and `-` only.
+
+## Typical workflow
+
+1. Create and enable a flag in `staging` at 100% rollout
+2. Test in staging. Verify behaviour, check evaluation logs
+3. Create the same flag in `production` at 0% rollout
+4. Gradually increase the production rollout: 5% → 25% → 50% → 100%
+5. When confident, remove the flag from your code and delete it
+
+Production is never the first environment to see a new flag.

@@ -1,0 +1,69 @@
+---
+title: Gradual Rollout
+sidebar_position: 1
+description: Safely expose a new feature to an increasing percentage of users without redeploying.
+---
+
+# Gradual Rollout
+
+A gradual rollout lets you expose a new feature to a small percentage of users first, watch for errors or unexpected behaviour, and then increase the percentage when you're confident. No redeployment at any step.
+
+## Setup
+
+Create a flag with a low starting rollout:
+
+```bash
+curl -X POST https://api.ffs.adarshrust.com/api/projects/$PROJECT_ID/environments/$ENV_ID/flags \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "New Checkout",
+    "key": "new_checkout",
+    "enabled": true,
+    "rollout_percentage": 5
+  }'
+```
+
+5% of users will see the new checkout flow. The other 95% see the old one.
+
+## Rolling out
+
+Update the rollout percentage as confidence grows. There is no set timeline. It depends on your traffic volume and error tolerance:
+
+```bash
+# Increase to 25%
+curl -X PUT https://api.ffs.adarshrust.com/api/projects/$PROJECT_ID/environments/$ENV_ID/flags/$FLAG_ID \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "rollout_percentage": 25 }'
+```
+
+Typical progression: `5% → 25% → 50% → 100%`
+
+Watch your error rate and latency dashboards between each step. If something looks wrong, roll back immediately.
+
+## Rolling back
+
+Set rollout to 0 or flip the global switch off:
+
+```bash
+# Option 1: zero rollout (rules still apply)
+curl -X PUT .../flags/$FLAG_ID -d '{ "rollout_percentage": 0 }'
+
+# Option 2: kill switch (disables for everyone, rules included)
+curl -X POST .../flags/$FLAG_ID/toggle
+```
+
+## Stable bucketing
+
+The same user always lands in the same bucket across requests. Increasing the rollout from 5% to 25% adds new users to the cohort without reassigning existing ones. A user already in the 5% bucket stays in at 25%. They won't see the feature flicker in and out between page loads.
+
+## Cleaning up
+
+Once a flag is at 100% and you've confirmed everything is stable:
+
+1. Remove the flag check from your code
+2. Deploy the code without the branch
+3. Delete the flag from the dashboard
+
+A flag with no code references and 100% rollout is technical debt. Clean it up.

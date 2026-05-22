@@ -1,0 +1,140 @@
+---
+title: Authentication
+sidebar_position: 1
+description: Register a user account and obtain a JWT for the management API.
+---
+
+# Authentication
+
+## Register
+
+`POST /auth/register`
+
+**Request**
+
+```json
+{
+  "email": "you@example.com",
+  "password": "your-password"
+}
+```
+
+Password must be at least 8 characters.
+
+**Response** `201 Created`
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "email": "you@example.com"
+}
+```
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| `400` | Missing or invalid fields |
+| `409` | Email already registered |
+| `429` | Rate limit exceeded |
+
+---
+
+## Login
+
+`POST /auth/login`
+
+Returns a JWT token valid for 24 hours.
+
+**Request**
+
+```json
+{
+  "email": "you@example.com",
+  "password": "your-password"
+}
+```
+
+**Response** `200 OK`
+
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| `401` | Invalid credentials |
+| `429` | Rate limit exceeded |
+
+---
+
+## Forgot Password
+
+`POST /auth/forgot-password`
+
+Sends a password reset link to the email address. Always returns the same response regardless of whether the email exists.
+
+**Request**
+
+```json
+{ "email": "you@example.com" }
+```
+
+**Response** `200 OK`
+
+```json
+{ "message": "If the account exists, a reset link has been sent." }
+```
+
+Reset tokens expire after 30 minutes and are single-use.
+
+---
+
+## Reset Password
+
+`POST /auth/reset-password`
+
+**Request**
+
+```json
+{
+  "token": "reset_token_from_email",
+  "newPassword": "new-secure-password"
+}
+```
+
+`newPassword` must be at least 8 characters.
+
+**Response** `200 OK` — plain text `Password reset successful`
+
+---
+
+## Using the token
+
+Include the token in the `Authorization` header for all `/api/*` requests:
+
+```
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+Tokens expire after **24 hours**. A `401 Unauthorized` response means the token is missing, malformed, or expired.
+
+---
+
+## Get current user
+
+`GET /api/me`
+
+Requires `Authorization: Bearer <token>`.
+
+**Response** `200 OK`
+
+```json
+{
+  "user_id": "550e8400-e29b-41d4-a716-446655440000"
+}
+```

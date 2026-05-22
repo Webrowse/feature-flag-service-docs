@@ -1,0 +1,64 @@
+---
+title: VIP Early Access
+sidebar_position: 4
+description: Give specific users or accounts access to a feature before it's available to anyone else.
+---
+
+# VIP Early Access
+
+VIP early access gives specific users or accounts access to a feature without affecting anyone else. Unlike an internal beta (which targets a whole domain), this targets individual users by ID or email.
+
+## By user email
+
+```bash
+curl -X POST .../flags/$FLAG_ID/rules \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "rule_type": "user_email",
+    "rule_value": "alice@bigclient.com",
+    "priority": 10
+  }'
+```
+
+Alice gets the feature. No one else does.
+
+## By user ID
+
+If your application uses stable internal user IDs, target by `user_id` instead:
+
+```bash
+{
+  "rule_type": "user_id",
+  "rule_value": "user_00042",
+  "priority": 10
+}
+```
+
+User IDs are more reliable than email addresses. Emails change, user IDs don't.
+
+## Multiple VIPs
+
+Add one rule per user, each at the same priority:
+
+```bash
+# Rule for user A
+{ "rule_type": "user_email", "rule_value": "alice@bigclient.com", "priority": 10 }
+
+# Rule for user B
+{ "rule_type": "user_email", "rule_value": "bob@partner.io", "priority": 10 }
+```
+
+All rules at priority 10 are checked in order. First match wins.
+
+## Stacking with a broader rollout
+
+VIP rules work alongside a general rollout. A typical early access setup:
+
+| Layer | Configuration |
+|---|---|
+| Priority 20 (VIP users) | `user_email` rules for key accounts |
+| Priority 10 (Internal team) | `email_domain = @yourcompany.com` |
+| Rollout 5% | General population |
+
+This gives VIPs access immediately, the internal team gets it for testing, and 5% of regular users are in the gradual rollout. Increase the rollout percentage over time without touching the VIP or team rules.

@@ -1,0 +1,48 @@
+---
+title: Self-Hosting
+sidebar_position: 0
+description: Run the Feature Flag Service on your own infrastructure using Docker or Railway.
+---
+
+# Self-Hosting
+
+The Feature Flag Service is fully self-hostable. You run the backend (Rust/Axum), the frontend (React/Caddy), and a PostgreSQL database. All three ship with Dockerfiles and work out of the box on Railway.
+
+## What you need
+
+| Component | Requirement |
+|---|---|
+| Backend API | Docker, or Rust 1.88+ to build from source |
+| Frontend | Docker (Caddy serves the built SPA) |
+| Database | PostgreSQL 16+ |
+| Reverse proxy | Optional (Caddy, nginx, or Railway's built-in routing) |
+
+## Deployment options
+
+**Railway (recommended):** connect your GitHub repos and Railway detects the Dockerfiles automatically. Add a PostgreSQL plugin and you're done. See [Deploy on Railway](/docs/self-hosting/railway).
+
+**Docker Compose (local or VPS):** the backend repo ships a `docker-compose.yml` that runs the API and a local PostgreSQL instance. See [Docker](/docs/self-hosting/docker).
+
+**Custom:** build from source and run anywhere. The backend is a single binary with no runtime dependencies besides PostgreSQL.
+
+## Repos
+
+| Component | Repository |
+|---|---|
+| Backend | [github.com/Webrowse/feature-flag-service-backend](https://github.com/Webrowse/feature-flag-service-backend) |
+| Frontend | [github.com/Webrowse/feature-flag-service-frontend](https://github.com/Webrowse/feature-flag-service-frontend) |
+
+## Quick reference
+
+```bash
+# Clone and run locally in one shot
+git clone git@github.com:Webrowse/feature-flag-service-backend.git
+cd feature-flag-service-backend
+cp .env.example .env          # set JWT_SECRET and DATABASE_URL
+docker-compose up -d          # starts PostgreSQL
+cargo install sqlx-cli --no-default-features --features postgres
+sqlx migrate run
+cargo run                     # API on :8080
+```
+
+See [Environment Variables](/docs/self-hosting/environment-variables) for all configuration options.

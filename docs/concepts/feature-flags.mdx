@@ -1,0 +1,59 @@
+---
+title: Feature Flags
+sidebar_position: 3
+description: A feature flag is a named boolean switch scoped to an environment, controlled by three independent mechanisms.
+---
+
+# Feature Flags
+
+A feature flag is a named boolean switch that lives inside an environment. Your application code references it by **key**. You control it with three independent mechanisms.
+
+## Anatomy of a flag
+
+| Field | Type | Description |
+|---|---|---|
+| `name` | string | Human-readable label, shown in the dashboard |
+| `key` | string | Lowercase identifier your code uses, e.g. `dark_mode` |
+| `description` | string | Optional description |
+| `enabled` | bool | Global on/off switch |
+| `rollout_percentage` | int (0–100) | Percentage of users who receive the flag when enabled |
+
+## The three controls
+
+### 1. Global switch (`enabled`)
+
+When `enabled = false`, the flag returns `false` for **every user**, regardless of rules or rollout percentage. This is your kill switch. Flip it to disable a feature instantly with no code change.
+
+When `enabled = true`, evaluation continues to targeting rules and rollout.
+
+### 2. Targeting rules
+
+Rules evaluate before the rollout percentage. Any user who matches a rule gets `enabled: true` immediately, even if the rollout is set to 0%. See [Targeting Rules](/docs/concepts/targeting-rules) for the full reference.
+
+### 3. Rollout percentage
+
+A number from 0 to 100. Users are assigned to a bucket using a deterministic hash of their user identifier and the flag key. The same user always lands in the same bucket, so they won't see a flag flicker between requests.
+
+**Important:** when `rollout_percentage` is `0` and `enabled` is `true`, the rollout logic is skipped entirely and the flag returns `true` for all users. To disable a flag for everyone, set `enabled` to `false`. Setting rollout to `100` is equivalent — all users are included.
+
+## Flag key format
+
+Keys must:
+- Be lowercase letters, numbers, `_`, or `-`
+- Start with a letter
+- Be unique within an environment
+
+Examples: `dark_mode`, `new-checkout`, `beta_v2`.
+
+Keys are what your application code references. Choose them carefully. Renaming a key means updating every reference in your codebase.
+
+## Toggling quickly
+
+Use the toggle endpoint to flip `enabled` on and off without a full update:
+
+```bash
+POST /api/projects/{pid}/environments/{eid}/flags/{fid}/toggle
+Authorization: Bearer <token>
+```
+
+Changes take effect on the next evaluation call.

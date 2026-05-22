@@ -1,0 +1,72 @@
+---
+title: Kill Switch
+sidebar_position: 2
+description: Use a feature flag as an emergency circuit breaker to disable a feature instantly without redeploying.
+---
+
+# Kill Switch
+
+A kill switch is a feature flag used as an emergency circuit breaker. When something goes wrong in production, disable the flag and the feature turns off instantly. No code change, no deploy.
+
+## Pattern
+
+Wrap any risky feature path in a flag check. If the flag is off, fall back to the safe path:
+
+```typescript
+const flags = await evaluate(user);
+
+if (flags['new_payment_processor']?.enabled) {
+  await processWithNewProvider(order);
+} else {
+  await processWithLegacyProvider(order);
+}
+```
+
+When the new payment processor starts throwing errors, disable the flag. Traffic immediately returns to the legacy path.
+
+## Setting up a kill switch flag
+
+Create the flag with `enabled: true` and `rollout_percentage: 100`:
+
+```bash
+curl -X POST .../flags \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "New Payment Processor",
+    "key": "new_payment_processor",
+    "enabled": true,
+    "rollout_percentage": 100
+  }'
+```
+
+## Triggering the switch
+
+When you need to kill the feature, hit the toggle endpoint:
+
+```bash
+curl -X POST https://api.ffs.adarshrust.com/api/projects/$PROJECT_ID/environments/$ENV_ID/flags/$FLAG_ID/toggle \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Or click the toggle in the dashboard. The change takes effect on the next evaluation call, within seconds for most applications.
+
+## Re-enabling
+
+Toggle it back on when the underlying issue is resolved. Re-enable at 5% first to confirm the fix holds before going back to 100%.
+
+## Kill switch vs rollout: key difference
+
+The global `enabled: false` switch overrides everything — rules, rollout, all of it. Use it for true emergencies. Note: setting `rollout_percentage: 0` does not disable the flag. When rollout is 0 and enabled is true, the flag evaluates to true for all users. The toggle (which flips `enabled`) is the correct kill switch.
+
+## Add it to your runbooks
+
+Kill switches are only useful if engineers know they exist and know how to trigger them under pressure. Add a section to your incident runbooks:
+
+```
+If [service X] is degraded:
+1. Log in to ffs.adarshrust.com
+2. Navigate to [project] → production
+3. Disable the [flag name] flag
+4. Confirm error rate drops in Datadog
+```

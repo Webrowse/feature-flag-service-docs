@@ -1,0 +1,52 @@
+---
+title: Projects
+sidebar_position: 1
+description: Projects are the top-level container in Feature Flag Service. One project per application.
+---
+
+# Projects
+
+A project is the top-level container for everything in the service. One project maps to one of your applications.
+
+## What a project gives you
+
+- A unique **SDK key** (`sdk_...`) that your application uses to call the evaluate endpoint
+- Two default **environments**: production and staging, created automatically on project creation
+- Isolated data — flags, rules, and evaluation history in one project never leak into another
+
+## SDK key
+
+The SDK key authenticates your application when calling `POST /sdk/v1/evaluate`. It identifies which project to evaluate flags for. Treat it like a secret and do not commit it to public source control.
+
+Each project has exactly one SDK key. If a key is compromised, rotate it:
+
+```bash
+POST /api/projects/{project_id}/regenerate-key
+Authorization: Bearer <token>
+```
+
+The old key is invalidated immediately. Update the key in your application's environment variables and redeploy.
+
+## Multiple projects
+
+Create one project per application, not per team or per environment. Environments handle the prod/staging split within a project.
+
+| Correct | Incorrect |
+|---|---|
+| `api` project with production + staging environments | `api-production` and `api-staging` as separate projects |
+| `web-app` project with production + staging environments | One project with `web-app-production` flags |
+
+## Managing a project
+
+| Action | Endpoint |
+|---|---|
+| Create | `POST /api/projects` |
+| List all | `GET /api/projects` |
+| Get one | `GET /api/projects/{id}` |
+| Rename | `PUT /api/projects/{id}` |
+| Rotate SDK key | `POST /api/projects/{id}/regenerate-key` |
+| Delete | `DELETE /api/projects/{id}` |
+
+:::warning
+Deleting a project permanently removes all its environments, flags, rules, and evaluation history. This cannot be undone.
+:::

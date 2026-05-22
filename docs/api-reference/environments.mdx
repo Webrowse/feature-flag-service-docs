@@ -1,0 +1,92 @@
+---
+title: Environments
+sidebar_position: 3
+description: REST API reference for creating and managing environments within a project.
+---
+
+# Environments API
+
+All endpoints require `Authorization: Bearer <token>`.
+
+**Base path:** `/api/projects/{project_id}/environments`
+
+## Create an environment
+
+`POST /api/projects/{project_id}/environments`
+
+**Request**
+
+```json
+{
+  "name": "Canary",
+  "key": "canary"
+}
+```
+
+| Field | Rules |
+|---|---|
+| `name` | Human-readable label |
+| `key` | Lowercase letters, numbers, `_`, `-` only |
+
+**Response** `201 Created`
+
+```json
+{
+  "id": "env_01abc...",
+  "project_id": "proj_01abc...",
+  "name": "Canary",
+  "key": "canary",
+  "created_at": "2026-05-22T10:00:00Z"
+}
+```
+
+---
+
+## List environments
+
+`GET /api/projects/{project_id}/environments`
+
+**Response** `200 OK`
+
+```json
+[
+  { "id": "env_prod...", "name": "Production", "key": "production", "created_at": "..." },
+  { "id": "env_stg...",  "name": "Staging",    "key": "staging",    "created_at": "..." }
+]
+```
+
+---
+
+## Get an environment
+
+`GET /api/projects/{project_id}/environments/{env_id}`
+
+**Response** `200 OK` — single environment object above.
+
+---
+
+## Update an environment
+
+`PUT /api/projects/{project_id}/environments/{env_id}`
+
+You can rename an environment but cannot change its `key` after creation.
+
+**Request**
+
+```json
+{ "name": "Canary (10%)" }
+```
+
+**Response** `200 OK` — updated environment object above.
+
+---
+
+## Delete an environment
+
+`DELETE /api/projects/{project_id}/environments/{env_id}`
+
+**Response** `204 No Content`
+
+:::warning
+Deletes all flags, rules, and evaluation history within the environment.
+:::

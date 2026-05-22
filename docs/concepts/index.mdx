@@ -1,0 +1,66 @@
+---
+title: Concepts
+sidebar_position: 0
+description: How the Feature Flag Service is structured. Projects, environments, flags, rules, and evaluation.
+---
+
+# Concepts
+
+Understanding the data model makes everything else predictable. There are five building blocks.
+
+## The data model
+
+```
+Account
+└── Project (has one SDK key)
+    └── Environment  (production / staging / custom)
+        └── Feature Flag  (key, enabled, rollout %)
+            └── Targeting Rule  (user_id / user_email / email_domain)
+```
+
+A **Project** is your application. It has one SDK key used to call the evaluate endpoint. When you create a project, `production` and `staging` environments are provisioned automatically.
+
+An **Environment** scopes a set of flags. The same flag key can exist in production and staging with completely independent configurations. Enabling a flag in staging has no effect on production.
+
+A **Feature Flag** is a named boolean switch inside an environment. It has a key your application code references, a global on/off switch, and an optional rollout percentage.
+
+A **Targeting Rule** enables a flag for specific users before the rollout logic runs. Rules have a type (`user_id`, `user_email`, or `email_domain`), a value to match, and a priority.
+
+## Architecture
+
+```mermaid
+graph TB
+    subgraph mgmt["Management Plane /api/*"]
+        dashboard[Dashboard]
+        mgmtapi[Management API]
+    end
+
+    subgraph data["Data Plane /sdk/*"]
+        eval[Evaluation Engine]
+        logger[Async Logger]
+    end
+
+    db[(PostgreSQL)]
+
+    yourapp[Your App] -->|POST /sdk/v1/evaluate\nX-SDK-Key| eval
+    eval -->|flags JSON| yourapp
+    eval -->|reads flags + rules| db
+    eval -.->|fire and forget| logger
+    logger --> db
+
+    dashboard -->|create / toggle flags| mgmtapi
+    mgmtapi -->|JWT auth| db
+```
+
+The **management plane** is the dashboard and REST API for creating and configuring flags. The **data plane** is the SDK endpoint your application calls at runtime. They share the same PostgreSQL database but are otherwise independent. A slow management API request never affects flag evaluation latency.
+
+Evaluation logs are written **asynchronously** after the response is sent, so they never add latency to the critical path.
+
+## Pages in this section
+
+- [Projects](/docs/concepts/projects)
+- [Environments](/docs/concepts/environments)
+- [Feature Flags](/docs/concepts/feature-flags)
+- [Targeting Rules](/docs/concepts/targeting-rules)
+- [Evaluation Algorithm](/docs/concepts/evaluation-algorithm)
+- [Analytics](/docs/concepts/analytics)

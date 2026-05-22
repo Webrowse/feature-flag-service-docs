@@ -1,0 +1,39 @@
+---
+title: Analytics
+sidebar_position: 6
+description: Every flag evaluation is logged asynchronously for dashboards, auditing, and debugging.
+---
+
+# Analytics
+
+Every call to `/sdk/v1/evaluate` generates an evaluation log entry for each flag in the response. These logs are the foundation for dashboards, rollout tracking, and debugging unexpected flag behaviour.
+
+## What gets logged
+
+For each flag evaluated:
+
+| Field | Value |
+|---|---|
+| `flag_id` | The flag that was evaluated |
+| `environment_id` | The environment used |
+| `user_id` | From the request context (if provided) |
+| `user_email` | From the request context (if provided) |
+| `result` | `true` or `false` |
+| `reason` | Human-readable explanation of the result |
+| `evaluated_at` | Timestamp of the evaluation |
+
+## Async logging
+
+Evaluation logs are written asynchronously. The service sends the flag results to your application, then writes the log in the background via `tokio::spawn`. The log write never blocks or adds latency to the response.
+
+If your application crashes immediately after receiving the response, a small number of evaluations may not be logged. For analytics and dashboards this is an acceptable trade-off. For audit requirements that need 100% accuracy, consider an alternative approach.
+
+## What analytics enables
+
+**Rollout tracking:** see how many users are in a rollout bucket and how that changes as you increase the percentage.
+
+**Flag exposure:** understand how many users are actually seeing a feature before deciding to remove the flag.
+
+**Debugging:** when a user reports unexpected behaviour, look up their evaluation history to see which reason was returned.
+
+**Cleanup signal:** a flag with zero evaluations in the last 30 days is safe to remove.

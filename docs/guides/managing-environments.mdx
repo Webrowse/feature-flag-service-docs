@@ -1,0 +1,65 @@
+---
+title: Managing Environments
+sidebar_position: 5
+description: Use environments to run the same flags with different configurations across production, staging, and custom contexts.
+---
+
+# Managing Environments
+
+Environments let you test flag changes in staging before they affect production. Same flag key, completely independent state.
+
+## The default setup
+
+Every project starts with `production` and `staging`. For most teams, this is enough:
+
+- Use `staging` to test new flags at 100% rollout
+- Use `production` to run gradual rollouts to real users
+
+## Adding an environment
+
+```bash
+curl -X POST https://api.ffs.adarshrust.com/api/projects/$PROJECT_ID/environments \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Canary",
+    "key": "canary"
+  }'
+```
+
+The `key` is what your application sends in the evaluate request body. Key format: lowercase letters, numbers, `_`, `-`.
+
+## Environment-aware evaluate calls
+
+Pass the environment key in every evaluate request. Read it from an environment variable, not hardcoded:
+
+```typescript
+const flags = await evaluate({
+  environment: process.env.FEATURE_FLAG_ENV ?? 'production',
+  context: { userId: user.id },
+});
+```
+
+Set `FEATURE_FLAG_ENV=staging` in your staging deployment, `FEATURE_FLAG_ENV=production` in production. The same binary works in both environments with different flag state.
+
+## Keeping environments in sync
+
+Environments are independent by design. You create flags in each one separately. A flag that accidentally gets enabled in production when you only meant to test it in staging is a worse problem than manually creating it in both places.
+
+A good workflow:
+
+1. Create flag in `staging`, test fully
+2. Create the same flag key in `production` at 0% rollout
+3. Verify the production flag evaluates correctly for a test user
+4. Start the gradual rollout
+
+## Deleting an environment
+
+```bash
+curl -X DELETE https://api.ffs.adarshrust.com/api/projects/$PROJECT_ID/environments/$ENV_ID \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+:::warning
+Deleting an environment removes all its flags, rules, and evaluation history. The `production` and `staging` environments are not protected and can be deleted like any other.
+:::

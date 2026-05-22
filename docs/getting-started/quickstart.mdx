@@ -1,0 +1,143 @@
+---
+title: Quickstart
+sidebar_position: 1
+description: Get the Feature Flag Service running and evaluate your first flag in 5 minutes.
+---
+
+# Quickstart
+
+This guide gets you from zero to evaluating a live flag in your application. The entire flow takes about 5 minutes.
+
+:::info Prerequisites
+- A running instance of the Feature Flag Service. [Self-host it](/docs/self-hosting) or use the hosted version at [ffs.adarshrust.com](https://ffs.adarshrust.com).
+:::
+
+## 1. Create an account
+
+```bash
+curl -X POST https://api.ffs.adarshrust.com/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{ "email": "you@example.com", "password": "your-password" }'
+```
+
+Response: `{ "id": "...", "email": "you@example.com" }`
+
+## 2. Log in and save your token
+
+```bash
+curl -X POST https://api.ffs.adarshrust.com/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{ "email": "you@example.com", "password": "your-password" }'
+```
+
+The register response is just `{ "id": "...", "email": "..." }`. The token comes from login:
+
+```json
+{ "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." }
+```
+
+Save the token. You'll need it for every management API call.
+
+```bash
+TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+## 3. Create a project
+
+A project represents one of your applications. Creating one automatically provisions `production` and `staging` environments and generates an SDK key.
+
+```bash
+curl -X POST https://api.ffs.adarshrust.com/api/projects \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "name": "My App" }'
+```
+
+```json
+{
+  "id": "proj_01abc...",
+  "name": "My App",
+  "sdk_key": "sdk_xxxxxxxxxxxxxxxxxxx",
+  "created_at": "2026-05-22T10:00:00Z"
+}
+```
+
+Save the `id` and `sdk_key`.
+
+```bash
+PROJECT_ID="proj_01abc..."
+SDK_KEY="sdk_xxxxxxxxxxxxxxxxxxx"
+```
+
+## 4. Get your production environment ID
+
+```bash
+curl https://api.ffs.adarshrust.com/api/projects/$PROJECT_ID/environments \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+```json
+[
+  { "id": "env_prod...", "name": "Production", "key": "production" },
+  { "id": "env_stg...",  "name": "Staging",    "key": "staging"    }
+]
+```
+
+```bash
+ENV_ID="env_prod..."
+```
+
+## 5. Create a feature flag
+
+```bash
+curl -X POST https://api.ffs.adarshrust.com/api/projects/$PROJECT_ID/environments/$ENV_ID/flags \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Dark Mode",
+    "key": "dark_mode",
+    "enabled": true,
+    "rollout_percentage": 100
+  }'
+```
+
+```json
+{ "id": "flag_01...", "key": "dark_mode", "enabled": true, "rollout_percentage": 100 }
+```
+
+## 6. Evaluate the flag from your app
+
+Call this endpoint from your application at runtime. Pass the SDK key in the header and a user context in the body.
+
+```bash
+curl -X POST https://api.ffs.adarshrust.com/sdk/v1/evaluate \
+  -H "X-SDK-Key: $SDK_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "environment": "production",
+    "context": {
+      "user_id": "user_42",
+      "user_email": "alice@example.com"
+    }
+  }'
+```
+
+```json
+{
+  "flags": {
+    "dark_mode": {
+      "enabled": true,
+      "reason": "Flag enabled for 100% rollout"
+    }
+  }
+}
+```
+
+Your application reads `flags.dark_mode.enabled` to decide whether to show the dark mode UI. Toggle the flag from the dashboard or API and every subsequent evaluation reflects the change. No redeployment needed.
+
+## Next steps
+
+- [Create targeting rules](/docs/guides/internal-beta) to enable a flag for specific users
+- [Set up a gradual rollout](/docs/guides/gradual-rollout) instead of 100%
+- [Integrate from JavaScript or Python](/docs/sdk/overview)
+- [Understand the evaluation algorithm](/docs/concepts/evaluation-algorithm)

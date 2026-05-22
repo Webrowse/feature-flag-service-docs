@@ -1,0 +1,91 @@
+---
+title: Targeting Rules
+sidebar_position: 5
+description: REST API reference for creating and managing targeting rules on a feature flag.
+---
+
+# Targeting Rules API
+
+All endpoints require `Authorization: Bearer <token>`.
+
+**Base path:** `/api/projects/{project_id}/environments/{env_id}/flags/{flag_id}/rules`
+
+## Create a rule
+
+`POST .../rules`
+
+**Request**
+
+```json
+{
+  "rule_type": "email_domain",
+  "rule_value": "@yourcompany.com",
+  "priority": 10
+}
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `rule_type` | string | Yes | `user_id`, `user_email`, or `email_domain` |
+| `rule_value` | string | Yes | Value to match against. For `email_domain`, include the `@` prefix. |
+| `priority` | int | Yes | Positive integer. Higher = evaluated first. |
+
+**Response** `201 Created`
+
+```json
+{
+  "id": "rule_01abc...",
+  "flag_id": "flag_01abc...",
+  "rule_type": "email_domain",
+  "rule_value": "@yourcompany.com",
+  "priority": 10,
+  "enabled": true,
+  "created_at": "2026-05-22T10:00:00Z"
+}
+```
+
+---
+
+## List rules
+
+`GET .../rules`
+
+Returns all rules for the flag, ordered by priority descending.
+
+**Response** `200 OK` — array of rule objects.
+
+---
+
+## Get a rule
+
+`GET .../rules/{rule_id}`
+
+**Response** `200 OK` — single rule object.
+
+---
+
+## Update a rule
+
+`PUT .../rules/{rule_id}`
+
+**Request**
+
+```json
+{
+  "rule_value": "@newdomain.com",
+  "priority": 20,
+  "enabled": false
+}
+```
+
+Send only the fields to change. Setting `enabled: false` deactivates the rule without deleting it.
+
+**Response** `200 OK` — updated rule object.
+
+---
+
+## Delete a rule
+
+`DELETE .../rules/{rule_id}`
+
+**Response** `204 No Content`

@@ -1,0 +1,90 @@
+---
+title: Deploy on Railway
+sidebar_position: 3
+description: Deploy the Feature Flag Service backend and frontend on Railway with PostgreSQL.
+---
+
+# Deploy on Railway
+
+Railway detects the Dockerfiles in both repos automatically. This is the fastest path to a production deployment.
+
+## Backend
+
+**1. Create a new Railway project and add the backend service**
+
+In the Railway dashboard, click **New Project → Deploy from GitHub repo** and select `feature-flag-service-backend`. Railway detects the `Dockerfile` and builds it.
+
+**2. Add a PostgreSQL database**
+
+In your Railway project, click **New → Database → PostgreSQL**. Railway provisions a managed PostgreSQL instance and injects `DATABASE_URL` into your environment automatically.
+
+**3. Set environment variables**
+
+In the backend service settings, add:
+
+| Variable | Value |
+|---|---|
+| `JWT_SECRET` | Generate with `openssl rand -base64 48` |
+| `PORT` | `8080` (Railway auto-sets this via `$PORT`, but be explicit) |
+| `ALLOWED_ORIGIN` | Your frontend URL, e.g. `https://ffs.adarshrust.com` |
+
+`DATABASE_URL` is injected automatically from the PostgreSQL plugin.
+
+**4. Run migrations**
+
+Open the Railway shell for the backend service and run:
+
+```bash
+cargo install sqlx-cli --no-default-features --features postgres
+sqlx migrate run
+```
+
+Or use the Railway CLI:
+
+```bash
+railway run sqlx migrate run
+```
+
+**5. Add a custom domain**
+
+In the service networking settings, add `api.ffs.adarshrust.com` (or your subdomain). Railway gives you a CNAME to point your DNS record at.
+
+---
+
+## Frontend
+
+**1. Add the frontend service**
+
+In the same Railway project, click **New → GitHub Repo** and select `feature-flag-service-frontend`.
+
+**2. Set build variables**
+
+The frontend needs `VITE_API_URL` at build time, not runtime. In Railway, set it under **Variables**:
+
+| Variable | Value |
+|---|---|
+| `VITE_API_URL` | `https://api.ffs.adarshrust.com` |
+
+**3. Add a custom domain**
+
+Add `ffs.adarshrust.com` in the service networking settings.
+
+---
+
+## CI/CD
+
+Both repos include a `.github/workflows/ci.yml` that runs `fmt`, `clippy`, and tests on every push, and builds and pushes a Docker image to the registry on merge to `master`. Railway picks up the new image and redeploys automatically.
+
+---
+
+## Verifying the deployment
+
+```bash
+# Backend health check
+curl https://api.ffs.adarshrust.com/health
+
+# Expected
+{ "status": "ok", "db": "ok" }
+```
+
+If the health check returns `200`, the backend is running and connected to PostgreSQL. Open the frontend URL to confirm the dashboard loads.

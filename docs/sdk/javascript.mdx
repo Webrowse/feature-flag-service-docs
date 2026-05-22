@@ -1,0 +1,122 @@
+---
+title: JavaScript / TypeScript
+sidebar_position: 2
+description: Evaluate feature flags from a Node.js or browser application using the FFS SDK endpoint.
+---
+
+# JavaScript / TypeScript
+
+No npm package required. Copy the client below into your project. It's a thin wrapper around `fetch` with authentication, error handling, and TypeScript types.
+
+## The client
+
+```typescript title="lib/flags.ts"
+export type FlagResult = {
+  enabled: boolean;
+  reason: string;
+};
+
+export type FlagMap = Record<string, FlagResult>;
+
+export type UserContext = {
+  user_id?: string;
+  user_email?: string;
+};
+
+const FFS_URL = process.env.FFS_API_URL ?? 'https://api.ffs.adarshrust.com';
+const SDK_KEY = process.env.FFS_SDK_KEY ?? '';
+const ENVIRONMENT = process.env.FFS_ENVIRONMENT ?? 'production';
+
+export async function evaluateFlags(context: UserContext): Promise<FlagMap> {
+  try {
+    const res = await fetch(`${FFS_URL}/sdk/v1/evaluate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-SDK-Key': SDK_KEY,
+      },
+      body: JSON.stringify({ environment: ENVIRONMENT, context }),
+    });
+
+    if (!res.ok) return {};
+
+    const data = await res.json();
+    return data.flags ?? {};
+  } catch {
+    // service unreachable — all flag checks default to false
+    return {};
+  }
+}
+
+export function isEnabled(flags: FlagMap, key: string): boolean {
+  return flags[key]?.enabled === true;
+}
+```
+
+## Usage in a Next.js API route
+
+```typescript title="app/api/dashboard/route.ts"
+import { evaluateFlags, isEnabled } from '@/lib/flags';
+
+export async function GET(request: Request) {
+  const user = await getUser(request);
+
+  const flags = await evaluateFlags({
+    user_id: user.id,
+    user_email: user.email,
+  });
+
+  return Response.json({
+    showNewDashboard: isEnabled(flags, 'new_dashboard'),
+    showBetaReports: isEnabled(flags, 'beta_reports'),
+  });
+}
+```
+
+## Usage in an Express route
+
+```typescript title="routes/dashboard.ts"
+import { evaluateFlags, isEnabled } from '../lib/flags';
+
+router.get('/dashboard', async (req, res) => {
+  const flags = await evaluateFlags({
+    user_id: req.user.id,
+    user_email: req.user.email,
+  });
+
+  res.render('dashboard', {
+    showNewLayout: isEnabled(flags, 'new_layout'),
+  });
+});
+```
+
+## Environment variables
+
+| Variable | Description |
+|---|---|
+| `FFS_API_URL` | Base URL of the service. Default: `https://api.ffs.adarshrust.com` |
+| `FFS_SDK_KEY` | Your project's SDK key (`sdk_...`) |
+| `FFS_ENVIRONMENT` | `production`, `staging`, or a custom environment key |
+
+## Browser usage
+
+:::warning Server-side only
+Keep the SDK key server-side. Do not include it in client-side JavaScript bundles. The key would be visible to anyone who inspects network requests.
+:::
+
+If you need flags in the browser, evaluate server-side and pass the results to the client as part of your initial page data (Next.js `getServerSideProps`, HTML data attributes, or an authenticated API endpoint your frontend calls).
+
+## Caching
+
+Evaluate once per request and pass the `FlagMap` down through your handler. Do not call `evaluateFlags` per individual feature check.
+
+```typescript
+// Good
+const flags = await evaluateFlags(userContext);
+const ui = buildUI(flags);
+
+// 3 separate network calls
+const darkMode = await evaluateFlags(userContext);
+const checkout = await evaluateFlags(userContext);
+const beta = await evaluateFlags(userContext);
+```

@@ -1,0 +1,125 @@
+---
+title: Docker
+sidebar_position: 1
+description: Run the Feature Flag Service locally or on a VPS using Docker and Docker Compose.
+---
+
+# Docker
+
+## Local development (backend only)
+
+The backend repo includes a `docker-compose.yml` that starts a PostgreSQL instance alongside the API.
+
+```bash
+git clone git@github.com:Webrowse/feature-flag-service-backend.git
+cd feature-flag-service-backend
+
+# Copy and configure the environment file
+cp .env.example .env
+```
+
+Edit `.env`:
+
+```bash
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/featureflags
+JWT_SECRET=<generate with: openssl rand -base64 48>
+PORT=8080
+ALLOWED_ORIGIN=http://localhost:3000
+```
+
+```bash
+# Start PostgreSQL
+docker-compose up -d
+
+# Install the SQLx CLI and run migrations
+cargo install sqlx-cli --no-default-features --features postgres
+sqlx migrate run
+
+# Start the API
+cargo run
+```
+
+The API is now running at `http://localhost:8080`.
+
+## Building the Docker image
+
+```bash
+docker build -t feature-flag-backend .
+```
+
+The Dockerfile uses a multi-stage build: a Rust builder stage compiles the binary, and a minimal Debian runtime image runs it.
+
+```bash
+docker run \
+  -e DATABASE_URL="postgres://user:pass@host:5432/db" \
+  -e JWT_SECRET="your-secret-here" \
+  -e PORT=8080 \
+  -p 8080:8080 \
+  feature-flag-backend
+```
+
+## Frontend
+
+```bash
+git clone git@github.com:Webrowse/feature-flag-service-frontend.git
+cd feature-flag-service-frontend
+
+docker build \
+  --build-arg VITE_API_URL=http://localhost:8080 \
+  -t feature-flag-frontend .
+
+docker run -p 3000:3000 feature-flag-frontend
+```
+
+The frontend is served by Caddy, which handles SPA fallback routing automatically.
+
+## Running both together
+
+Create a `docker-compose.yml` in a parent directory:
+
+```yaml title="docker-compose.yml"
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: featureflags
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    build: ./feature-flag-service-backend
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/featureflags
+      JWT_SECRET: ${JWT_SECRET}
+      PORT: 8080
+      ALLOWED_ORIGIN: http://localhost:3000
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+
+  frontend:
+    build:
+      context: ./feature-flag-service-frontend
+      args:
+        VITE_API_URL: http://localhost:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+```
+
+```bash
+JWT_SECRET=$(openssl rand -base64 48) docker-compose up
+```
+
+Run migrations once after the first start:
+
+```bash
+docker-compose exec api sqlx migrate run
+```
