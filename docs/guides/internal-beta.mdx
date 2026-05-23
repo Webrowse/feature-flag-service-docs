@@ -1,79 +1,72 @@
 ---
 title: Internal Beta
 sidebar_position: 3
-description: Enable a feature for your entire team using email domain targeting before rolling it out to users.
+description: Enable a feature for your team using email domain targeting before rolling it out to users.
 ---
 
 # Internal Beta
 
-An internal beta lets your team test a feature in production with real data and real infrastructure before any external user sees it. Use an `email_domain` targeting rule to match everyone on your company domain.
+An internal beta lets your team test a feature in production with real data and real infrastructure before any external user sees it. You use an `email_domain` targeting rule to match everyone on your company domain.
 
-## Setup
-
-Create the flag with 0% rollout (users won't see it), then add a rule for your company domain:
+## Setup in the dashboard
 
 **1. Create the flag**
 
-```bash
-curl -X POST .../flags \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Redesigned Dashboard",
-    "key": "redesigned_dashboard",
-    "enabled": true,
-    "rollout_percentage": 0
-  }'
-```
+Open the production environment, enter a flag name and key, and click **Add flag**. Leave the flag **disabled** for now.
 
 **2. Add the email domain rule**
 
+Click the flag name to open its Rules page. In the **Add targeting rule** form:
+
+| Type | Value |
+|---|---|
+| `email_domain` | `@yourcompany.com` |
+
+Click **Add rule**.
+
+**3. Enable the flag**
+
+Go back to the flags list and click the **toggle** to enable the flag.
+
+Everyone who logs in with a `@yourcompany.com` email now sees the feature. No one else does.
+
+:::warning External user access
+When a flag is enabled with no rollout percentage set (the default when created from the dashboard), it evaluates to true for all users who are not matched by any rule. To prevent external users from accessing the feature, set `rollout_percentage` to a small value using the API before enabling the flag. Users who do not match your domain rule will then go through the rollout bucket check instead of getting the flag by default.
+
 ```bash
-curl -X POST .../flags/$FLAG_ID/rules \
+curl -X PUT https://api.ffs.adarshrust.com/api/projects/$PROJECT_ID/environments/$ENV_ID/flags/$FLAG_ID \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{
-    "rule_type": "email_domain",
-    "rule_value": "@yourcompany.com",
-    "priority": 10
-  }'
+  -d '{ "rollout_percentage": 1 }'
 ```
 
-Everyone who logs in with a `@yourcompany.com` email now sees the new dashboard. No one else does.
+With rollout at 1%, users outside your domain have a less than 1% chance of seeing the feature. Your team members, matched by the domain rule, always get it.
+:::
 
 ## Testing in production
 
-This pattern tests the full production stack — real database, real third-party integrations, real network conditions — without exposing users to an unfinished feature.
+This pattern tests the full production stack — real database, real integrations, real network — without exposing an unfinished feature to users.
 
 Your evaluate call must pass `user_email` from the authenticated session for domain matching to work:
 
 ```typescript
 const flags = await evaluate({
-  userId: user.id,
-  userEmail: user.email,  // required for email_domain matching
+  environment: 'production',
+  context: {
+    user_id: user.id,
+    user_email: user.email,  // required for email_domain matching
+  },
 });
 ```
 
 ## Expanding the beta
 
-Once your team is happy, expand to a small external cohort before full rollout:
+Once your team is satisfied, expand to a wider audience:
 
-1. Add specific `user_email` rules for trusted external users (priority 9)
-2. Increase `rollout_percentage` to 5% for the broader public
-3. Remove the domain rule when you go to full rollout
+1. Add `user_email` rules for specific external users you trust
+2. Use the API to increase `rollout_percentage` for the broader public
+3. Remove the domain rule once you go to full rollout
 
 ## Removing the rule
 
-When ready for general availability, delete the targeting rule and set rollout to 100:
-
-```bash
-# Delete the domain rule
-curl -X DELETE .../flags/$FLAG_ID/rules/$RULE_ID \
-  -H "Authorization: Bearer $TOKEN"
-
-# Open to all users
-curl -X PUT .../flags/$FLAG_ID \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{ "rollout_percentage": 100 }'
-```
+When the feature is ready for everyone, open the flag's Rules page and click **Delete** on the domain rule. If you set a rollout percentage via the API, update it to 100 as well.

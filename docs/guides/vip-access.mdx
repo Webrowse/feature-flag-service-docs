@@ -1,64 +1,64 @@
 ---
 title: VIP Early Access
 sidebar_position: 4
-description: Give specific users or accounts access to a feature before it's available to anyone else.
+description: Give specific users or accounts access to a feature before it is available to anyone else.
 ---
 
 # VIP Early Access
 
 VIP early access gives specific users or accounts access to a feature without affecting anyone else. Unlike an internal beta (which targets a whole domain), this targets individual users by ID or email.
 
-## By user email
+## Setup in the dashboard
 
-```bash
-curl -X POST .../flags/$FLAG_ID/rules \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "rule_type": "user_email",
-    "rule_value": "alice@bigclient.com",
-    "priority": 10
-  }'
-```
+1. Open the environment where your flag lives (e.g. Production)
+2. Click the flag name to open its **Rules** page
+3. In the **Add targeting rule** form, choose a type and enter the value, then click **Add rule**
 
-Alice gets the feature. No one else does.
+For a specific email address:
 
-## By user ID
-
-If your application uses stable internal user IDs, target by `user_id` instead:
-
-```bash
-{
-  "rule_type": "user_id",
-  "rule_value": "user_00042",
-  "priority": 10
-}
-```
-
-User IDs are more reliable than email addresses. Emails change, user IDs don't.
-
-## Multiple VIPs
-
-Add one rule per user, each at the same priority:
-
-```bash
-# Rule for user A
-{ "rule_type": "user_email", "rule_value": "alice@bigclient.com", "priority": 10 }
-
-# Rule for user B
-{ "rule_type": "user_email", "rule_value": "bob@partner.io", "priority": 10 }
-```
-
-All rules at priority 10 are checked in order. First match wins.
-
-## Stacking with a broader rollout
-
-VIP rules work alongside a general rollout. A typical early access setup:
-
-| Layer | Configuration |
+| Type | Value |
 |---|---|
-| Priority 20 (VIP users) | `user_email` rules for key accounts |
-| Priority 10 (Internal team) | `email_domain = @yourcompany.com` |
-| Rollout 5% | General population |
+| `user_email` | `alice@bigclient.com` |
 
-This gives VIPs access immediately, the internal team gets it for testing, and 5% of regular users are in the gradual rollout. Increase the rollout percentage over time without touching the VIP or team rules.
+For a specific user ID (more reliable — email addresses can change):
+
+| Type | Value |
+|---|---|
+| `user_id` | `user_00042` |
+
+The rule takes effect immediately. Alice (or user_00042) gets the flag enabled on their next evaluate call.
+
+## Adding multiple VIPs
+
+Add one rule per person. There is no limit on the number of rules. Each rule has its own toggle so you can pause or remove individual users without affecting others.
+
+For example, to give two users early access:
+
+- Rule 1: `user_email` = `alice@bigclient.com`
+- Rule 2: `user_email` = `bob@partner.io`
+
+Both rules can be on at the same time.
+
+## How rules and rollout interact
+
+Targeting rules are checked before the general rollout. This means VIP users always get the flag enabled (as long as the flag is on) regardless of what the rollout percentage is set to.
+
+A typical layered early access setup:
+
+| Layer | Rule type | Value |
+|---|---|---|
+| VIP accounts | `user_email` | `alice@bigclient.com`, `bob@partner.io` |
+| Internal team | `email_domain` | `@yourcompany.com` |
+| General rollout | (rollout % via API) | 5% of other users |
+
+VIPs and the internal team get access immediately. The rollout percentage applies to everyone else. Increase the rollout over time without touching the VIP rules.
+
+:::info
+Rollout percentage is not yet configurable in the dashboard UI. Use the [Management API](/docs/api-reference/flags) to set `rollout_percentage` on a flag.
+:::
+
+## Removing VIP access
+
+To remove a specific user's access, open the flag's Rules page and click **Delete** on their rule. Their next evaluate call will fall back to the general rollout state.
+
+To remove all early access and open the flag to everyone, delete all targeting rules and ensure the flag is enabled.

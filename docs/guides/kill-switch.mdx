@@ -26,47 +26,48 @@ When the new payment processor starts throwing errors, disable the flag. Traffic
 
 ## Setting up a kill switch flag
 
-Create the flag with `enabled: true` and `rollout_percentage: 100`:
+In the dashboard:
 
-```bash
-curl -X POST .../flags \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "New Payment Processor",
-    "key": "new_payment_processor",
-    "enabled": true,
-    "rollout_percentage": 100
-  }'
-```
+1. Open your project and select the **Production** environment
+2. Enter a flag name (e.g. `New Payment Processor`) and a key (e.g. `new_payment_processor`), then click **Add flag**
+3. Click the **toggle** to enable the flag
+
+The flag is now live for all users. Your application can start evaluating it.
 
 ## Triggering the switch
 
-When you need to kill the feature, hit the toggle endpoint:
+When you need to kill the feature, open the dashboard:
+
+1. Go to the production environment flags list
+2. Click the **toggle** next to the flag to disable it
+
+The change takes effect on the next evaluation call — within seconds for most applications.
+
+If you prefer the API:
 
 ```bash
-curl -X POST https://api.ffs.adarshrust.com/api/projects/$PROJECT_ID/environments/$ENV_ID/flags/$FLAG_ID/toggle \
-  -H "Authorization: Bearer $TOKEN"
+curl -X PUT https://api.ffs.adarshrust.com/api/projects/$PROJECT_ID/environments/$ENV_ID/flags/$FLAG_ID \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "enabled": false }'
 ```
-
-Or click the toggle in the dashboard. The change takes effect on the next evaluation call, within seconds for most applications.
 
 ## Re-enabling
 
-Toggle it back on when the underlying issue is resolved. Re-enable at 5% first to confirm the fix holds before going back to 100%.
+Click the toggle again when the underlying issue is resolved. The flag comes back on for all users immediately.
 
-## Kill switch vs rollout: key difference
+## A note on rollout percentage
 
-The global `enabled: false` switch overrides everything — rules, rollout, all of it. Use it for true emergencies. Note: setting `rollout_percentage: 0` does not disable the flag. When rollout is 0 and enabled is true, the flag evaluates to true for all users. The toggle (which flips `enabled`) is the correct kill switch.
+The global enabled toggle overrides everything — rules and rollout alike. Setting rollout to 0% does not disable the flag. When the flag is enabled with rollout at 0, it evaluates to true for all users. The toggle (which flips the `enabled` field) is the correct kill switch — not the rollout percentage.
 
 ## Add it to your runbooks
 
-Kill switches are only useful if engineers know they exist and know how to trigger them under pressure. Add a section to your incident runbooks:
+Kill switches are only useful if your team knows they exist and knows how to use them under pressure. Add a section to your incident runbooks:
 
 ```
 If [service X] is degraded:
 1. Log in to ffs.adarshrust.com
-2. Navigate to [project] → production
-3. Disable the [flag name] flag
-4. Confirm error rate drops in Datadog
+2. Go to [project] → Production
+3. Click the toggle to disable the [flag name] flag
+4. Confirm the error rate drops
 ```

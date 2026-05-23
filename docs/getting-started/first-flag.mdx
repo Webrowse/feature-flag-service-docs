@@ -1,63 +1,82 @@
 ---
-title: Create Your First Flag
+title: Dashboard Walkthrough
 sidebar_position: 2
-description: Walk through creating a feature flag in the dashboard. Name, key, rollout, and targeting.
+description: A complete walkthrough of the dashboard — projects, environments, flags, and targeting rules.
 ---
 
-# Create Your First Flag
+# Dashboard Walkthrough
 
-This page walks through the dashboard flow for creating a flag. If you prefer the API, the [Quickstart](/docs/getting-started/quickstart) covers the same steps via cURL.
+This page covers every screen in the dashboard in order. Use it as a reference when you are getting started or want to understand how the pieces fit together.
 
-## Step 1: Open a project
+## Projects page
 
-Log in at [ffs.adarshrust.com](https://ffs.adarshrust.com) and select a project from the dashboard. If you haven't created one yet, click **New Project**, give it a name, and click **Create**. A production and staging environment are created automatically.
+When you log in, you land on the **Projects** page. This is your home screen.
 
-## Step 2: Select an environment
+Each project represents one application. To create one, fill in the **Project name** field (add an optional description if you want) and click **New project**. The card appears immediately.
 
-Click the environment where you want the flag to live. Flags are scoped to an environment. The same flag key can exist in production and staging with completely independent configurations.
+Click any project card to open it.
 
-## Step 3: Create the flag
+To delete a project, click **Delete** on the card. This also deletes all its environments and flags — there is no undo.
 
-Click **New Flag** and fill in the fields:
+## Project page (environments and SDK key)
 
-| Field | What to set |
+Opening a project takes you to the **Environments** page for that project.
+
+At the top you will see the **SDK Key** panel. This is the key your application sends when calling the evaluate endpoint. Click **Copy** to copy it.
+
+- **Regenerate** creates a new key. Your old key stops working immediately, so update your app before regenerating.
+- The SDK key is scoped to the project, not to individual environments. One key covers production, staging, and any custom environments you add.
+
+Below the key panel you will see the environment list. Every new project gets **Production** and **Staging** pre-created. Click an environment card to open it and manage its flags.
+
+### Adding an environment
+
+Fill in **Name** and **Key** (a short identifier like `preview` or `qa`) and click **Add environment**. The key must be lowercase. You will pass it as the `environment` field in evaluate calls.
+
+## Flags page
+
+Opening an environment takes you to its **Flags** page.
+
+To create a flag, enter a **Flag name** and a **Key**, then click **Add flag**:
+
+| Field | What to enter |
 |---|---|
-| **Name** | A human-readable label, e.g. `Dark Mode` |
-| **Key** | A lowercase identifier your code will reference, e.g. `dark_mode`. Allowed characters: `a-z`, `0-9`, `_`, `-`. Must start with a letter. |
-| **Enabled** | Whether the flag is globally on. Set to on to start. |
-| **Rollout %** | `100` to enable for everyone, `0` to disable for everyone while keeping the flag on, or any value in between for a gradual rollout. |
+| **Flag name** | Human-readable label, e.g. `Dark Mode` |
+| **Key** | Lowercase identifier your code references, e.g. `dark_mode`. Letters, numbers, underscores, and hyphens. Must start with a letter. |
 
-Click **Create Flag**.
+New flags start **disabled** (toggle is off). Click the toggle to enable a flag — it takes effect on the next evaluate call, within seconds.
 
-## Step 4: Add targeting rules (optional)
+To disable a flag for everyone immediately, click its toggle. Rules and configuration are preserved.
 
-Targeting rules let you enable a flag for specific users regardless of the rollout percentage. To add one:
+To delete a flag, click **Delete** on its row. This also removes all targeting rules for that flag.
 
-1. Open the flag and click **New Rule**
-2. Choose a rule type: `user_id`, `user_email`, or `email_domain`
-3. Enter the value to match, e.g. `@yourcompany.com`
-4. Set a priority number (higher = evaluated first)
+Click a flag name to open its rules page.
 
-Rules are evaluated before the rollout percentage. A user who matches any rule gets the flag enabled immediately.
+## Rules page
 
-## Step 5: Verify from your app
+The Rules page shows the targeting rules for one flag. Rules let you enable a flag for specific users before the general rollout reaches them.
 
-Call the evaluate endpoint with a user context and confirm the flag appears in the response:
+To add a rule, choose a **Type**, enter a **Value**, and click **Add rule**:
 
-```bash
-curl -X POST https://api.ffs.adarshrust.com/sdk/v1/evaluate \
-  -H "X-SDK-Key: sdk_your_key_here" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "environment": "production",
-    "context": { "user_id": "user_1" }
-  }'
+| Type | Value format | What it matches |
+|---|---|---|
+| `user_id` | `user_00042` | A specific user by their internal ID |
+| `user_email` | `alice@example.com` | A specific user by their email address |
+| `email_domain` | `@yourcompany.com` | Everyone from that email domain |
+
+Rules are checked before the global flag state. A user who matches any active rule gets the flag enabled, as long as the flag itself is enabled.
+
+Each rule has its own toggle. Disabling a rule stops it from matching without deleting it — useful if you want to pause a rule temporarily.
+
+To remove a rule, click **Delete** on its row.
+
+## Summary of the navigation flow
+
+```
+Dashboard (Projects)
+  └── Project (Environments + SDK Key)
+        └── Environment (Flags)
+              └── Flag (Targeting Rules)
 ```
 
-You should see `dark_mode` (or whatever key you chose) in the `flags` object.
-
-## Changing a flag
-
-All changes take effect on the next evaluation call. No deploy, no cache flush.
-
-To quickly disable a flag for everyone, click the **toggle** button on the flag list page. To fine-tune the rollout or rules, open the flag and edit in place.
+Every level has its own back button to go up one level.

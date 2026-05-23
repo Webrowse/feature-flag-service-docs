@@ -6,64 +6,63 @@ description: Safely expose a new feature to an increasing percentage of users wi
 
 # Gradual Rollout
 
-A gradual rollout lets you expose a new feature to a small percentage of users first, watch for errors or unexpected behaviour, and then increase the percentage when you're confident. No redeployment at any step.
+A gradual rollout exposes a new feature to a small percentage of users first, lets you watch for errors, and then increases the percentage when you are confident. No redeployment at any step.
+
+:::info Dashboard vs API
+Rollout percentage is not yet configurable in the dashboard UI. Create the flag in the dashboard, then use the Management API to set and update the rollout percentage as shown below.
+:::
 
 ## Setup
 
-Create a flag with a low starting rollout:
+First create the flag in the dashboard (Projects → your project → Production → Add flag). Then set the initial rollout via the API:
 
 ```bash
-curl -X POST https://api.ffs.adarshrust.com/api/projects/$PROJECT_ID/environments/$ENV_ID/flags \
+curl -X PUT https://api.ffs.adarshrust.com/api/projects/$PROJECT_ID/environments/$ENV_ID/flags/$FLAG_ID \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{
-    "name": "New Checkout",
-    "key": "new_checkout",
-    "enabled": true,
-    "rollout_percentage": 5
-  }'
+  -d '{ "enabled": true, "rollout_percentage": 5 }'
 ```
 
-5% of users will see the new checkout flow. The other 95% see the old one.
+5% of users will see the new feature. The other 95% see the existing behaviour.
 
 ## Rolling out
 
-Update the rollout percentage as confidence grows. There is no set timeline. It depends on your traffic volume and error tolerance:
+Increase the rollout percentage as confidence grows. There is no fixed timeline — it depends on your traffic volume and error tolerance:
 
 ```bash
-# Increase to 25%
 curl -X PUT https://api.ffs.adarshrust.com/api/projects/$PROJECT_ID/environments/$ENV_ID/flags/$FLAG_ID \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ "rollout_percentage": 25 }'
 ```
 
-Typical progression: `5% → 25% → 50% → 100%`
+Typical progression: 5% → 25% → 50% → 100%.
 
-Watch your error rate and latency dashboards between each step. If something looks wrong, roll back immediately.
+Watch your error rate and latency between each step. If something looks wrong, roll back immediately.
 
 ## Rolling back
 
-Set rollout to 0 or flip the global switch off:
+Disable the flag from the dashboard (click the toggle) or via the API:
 
 ```bash
-# Option 1: zero rollout (rules still apply)
-curl -X PUT .../flags/$FLAG_ID -d '{ "rollout_percentage": 0 }'
-
-# Option 2: kill switch (disables for everyone, rules included)
-curl -X POST .../flags/$FLAG_ID/toggle
+curl -X PUT .../flags/$FLAG_ID \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "enabled": false }'
 ```
+
+This disables the flag for everyone, including users who were in the rollout bucket. Rules and rollout configuration are preserved — you can re-enable later without reconfiguring.
 
 ## Stable bucketing
 
-The same user always lands in the same bucket across requests. Increasing the rollout from 5% to 25% adds new users to the cohort without reassigning existing ones. A user already in the 5% bucket stays in at 25%. They won't see the feature flicker in and out between page loads.
+The same user always lands in the same bucket across requests. Increasing the rollout from 5% to 25% adds new users to the cohort without reassigning existing ones. A user already in the 5% bucket stays in at 25%. They will not see the feature flicker in and out between page loads.
 
 ## Cleaning up
 
-Once a flag is at 100% and you've confirmed everything is stable:
+Once a flag reaches 100% and you have confirmed everything is stable:
 
 1. Remove the flag check from your code
-2. Deploy the code without the branch
+2. Deploy without the branch
 3. Delete the flag from the dashboard
 
 A flag with no code references and 100% rollout is technical debt. Clean it up.
